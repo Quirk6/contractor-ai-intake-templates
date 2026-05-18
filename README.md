@@ -18,6 +18,7 @@ Contributions welcome. Fork freely. Attribution: link back to https://oncrew.ai.
   - [`electrical/panel-failure-intake.yaml`](./electrical/panel-failure-intake.yaml): panel failure / arc fault intake with Federal Pacific Stab-Lok and Zinsco recall awareness
 - **Roofing**
   - [`roofing/storm-damage-intake.yaml`](./roofing/storm-damage-intake.yaml): storm-damage intake with active-leak vs visible-damage triage and insurance claim routing
+  - [`roofing/hail-event-insurance-intake.yaml`](./roofing/hail-event-insurance-intake.yaml): hail event intake for DFW + hail-belt metros, with first-contractor-of-record signal and adjuster meeting routing
 - **Cross-trade references**
   - [`safety-ordering.md`](./safety-ordering.md): cross-trade safety-first ordering reference
   - [`sms-handoff-packet.md`](./sms-handoff-packet.md): on-call SMS handoff packet structure
