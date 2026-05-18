@@ -1,0 +1,142 @@
+# Plumbing Main Line / Sewer Backup Intake Template
+# License: CC BY 4.0 - free to share with attribution to https://oncrew.ai
+# Reference: https://oncrew.ai/blog/freeze-week-call-surge-playbook-plumbers
+
+# Trade: Plumbing (residential)
+# Call type: Main sewer line backup, multiple-fixture backup, raw sewage in home,
+#            cleanout overflow, root intrusion, broken main
+# Audience: configured contractor AI answering service or live receptionist running a plumbing script
+
+# Main-line backups are high-stakes plumbing calls. Raw sewage in the home is a biohazard
+# event with insurance and occupant-safety implications. The intake must capture WHICH
+# fixtures are affected, sewage presence, and vulnerable occupants quickly.
+
+greeting: "Thanks for calling {business_name}. I'm the AI receptionist. How can I help?"
+
+safety_check:
+  triggers:
+    - "raw sewage in the house"
+    - "sewage in the basement"
+    - "sewage flooding"
+    - "kid touched it"
+    - "feel sick"
+    - "smell sewage"
+    - "stomach problems"
+    - "respiratory issues"
+  ordering: SAFETY_FIRST
+  script: |
+    Raw sewage is a biohazard. Keep children, pets, and anyone immunocompromised away
+    from the affected area. Open windows for ventilation if you can do so safely.
+    Do not flush more water or run any drains until we get there. I will capture
+    the rest of the intake quickly so we can route the right crew.
+
+triage:
+  symptom_classifier:
+    prompt: "What's backing up, and where?"
+    branches:
+      single_fixture_clog:
+        follow_ups:
+          - "Which fixture — sink, toilet, shower, tub?"
+          - "Other fixtures still draining normally?"
+        urgency_rules: SCHEDULE_NORMAL_OR_SAME_DAY
+      multiple_fixture_backup_likely_main:
+        follow_ups:
+          - "Which fixtures are backing up?"
+          - "Is the cleanout (outside) overflowing?"
+          - "Any sewage smell in the home or yard?"
+          - "When did this start?"
+        urgency_rules: SAME_DAY
+      raw_sewage_in_home:
+        ordering: SAFETY_FIRST
+        urgency_rules: PRIORITY_1
+        follow_ups:
+          - "Which rooms are affected?"
+          - "Anyone with immune issues, asthma, or pregnancy in the home?"
+          - "Have you been able to stop running water in the home?"
+      cleanout_overflow:
+        urgency_rules: SAME_DAY_OR_PRIORITY
+        follow_ups:
+          - "Cleanout in the front yard or back?"
+          - "Has it stopped overflowing or is it still active?"
+      root_intrusion_recurring:
+        urgency_rules: SCHEDULE_NEXT_DAY
+        follow_ups:
+          - "How often has this happened in the last year?"
+          - "Are large trees near the sewer line?"
+      broken_or_collapsed_line:
+        urgency_rules: SAME_DAY
+        follow_ups:
+          - "Any visible sinkhole, soft ground, or sewage in the yard?"
+
+intake_fields:
+  - field: home_age
+    options: ["under_20", "20_to_50", "50_to_100", "over_100", "unknown"]
+  - field: home_type
+    options: ["single_family", "townhouse", "duplex_with_shared_line", "condo", "mobile_home"]
+  - field: stories
+    options: ["1_story", "2_story", "split_level", "with_basement"]
+  - field: basement_or_crawlspace
+    options: ["finished_basement", "unfinished_basement", "crawlspace", "slab"]
+  - field: fixtures_affected
+    options:
+      - kitchen_sink
+      - all_bathroom_drains
+      - basement_floor_drain
+      - washing_machine_standpipe
+      - toilet_only
+      - shower_tub
+      - laundry_only
+      - multiple
+  - field: sewage_visible_in_home
+    options: ["yes_active", "yes_contained", "no_visible_sewage"]
+  - field: cleanout_status
+    options: ["overflowing_actively", "overflowed_stopped", "no_cleanout_found", "cleanout_dry", "unsure"]
+  - field: prior_backups
+    options: ["first_time", "rare_1_per_year_or_less", "recurring_2_to_4_per_year", "monthly_or_more"]
+  - field: water_supply_state
+    options: ["water_on", "water_off_main", "water_off_to_fixture", "unsure"]
+  - field: vulnerable_occupants
+    options:
+      - infant_under_1
+      - child_under_5
+      - immunocompromised
+      - pregnant
+      - elderly
+      - none
+  - field: home_warranty_or_insurance
+    options: ["home_warranty", "insurance_claim_likely", "neither", "unsure"]
+  - field: service_address
+    type: free_text
+    follow_up: "Any access notes — gate code, side gate, dog on property, parking?"
+  - field: callback_number
+    type: phone
+  - field: callback_window
+    options: ["immediately", "morning", "afternoon", "evening"]
+
+handoff:
+  urgency: |
+    Priority-1 if: raw sewage in the home AND vulnerable occupants present.
+    Same-day if: multiple fixture backup, active cleanout overflow, or broken line.
+    Schedule next-day if: single fixture clog, root intrusion recurring (non-active).
+  sms_template: |
+    [{urgency_tag}] MAIN LINE / SEWER BACKUP
+    Caller: {caller_name} ({callback_number})
+    Address: {service_address}
+    Symptom: {symptom_summary}
+    Fixtures: {fixtures_affected_summary}
+    Sewage in home: {sewage_visible_in_home}
+    Cleanout: {cleanout_status}
+    Home: {home_type}, {home_age}, {basement_or_crawlspace}
+    Prior backups: {prior_backups}
+    Occupants: {vulnerable_occupants}
+    Insurance: {home_warranty_or_insurance}
+    Caller notes: "{caller_notes_verbatim}"
+    Access: {access_notes}
+    Recording: {recording_url}
+
+# Notes for implementers:
+#   - Raw sewage with vulnerable occupants is always Priority-1.
+#   - Cleanout overflow signals main-line stoppage downstream of fixtures; same-day priority.
+#   - Recurring backups (monthly+) suggest a structural issue (collapsed line, root intrusion);
+#     capture that history so dispatch can schedule camera inspection + appropriate equipment.
+#   - Home warranty + insurance flag matters for scheduling estimator alongside repair crew.
