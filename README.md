@@ -13,6 +13,7 @@ Contributions welcome. Fork freely. Attribution: link back to https://oncrew.ai.
   - [`hvac/phoenix-summer-surge-intake.yaml`](./hvac/phoenix-summer-surge-intake.yaml): 3-tier triage for 110-degree-day AC failure calls (Phoenix surge variant)
 - **Plumbing**
   - [`plumbing/burst-pipe-call.yaml`](./plumbing/burst-pipe-call.yaml): burst pipe intake with shutoff-valve walkthrough
+  - [`plumbing/water-heater-failure-intake.yaml`](./plumbing/water-heater-failure-intake.yaml): water heater intake with gas vs electric branching, T&P valve safety ordering
 - **Electrical**
   - [`electrical/panel-failure-intake.yaml`](./electrical/panel-failure-intake.yaml): panel failure / arc fault intake with Federal Pacific Stab-Lok and Zinsco recall awareness
 - **Roofing**
