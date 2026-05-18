@@ -21,6 +21,7 @@ Contributions welcome. Fork freely. Attribution: link back to https://oncrew.ai.
 - **Cross-trade references**
   - [`safety-ordering.md`](./safety-ordering.md): cross-trade safety-first ordering reference
   - [`sms-handoff-packet.md`](./sms-handoff-packet.md): on-call SMS handoff packet structure
+  - [`universal/multi-season-surge-handling.md`](./universal/multi-season-surge-handling.md): heat surge / freeze event / storm cell handling reference with metro-by-metro surge matrix
 
 ## Quick example: HVAC no-heat intake
 
