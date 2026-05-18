@@ -1,0 +1,163 @@
+# Roofing Hail Event Insurance-Driven Intake Template
+# License: CC BY 4.0 - free to share with attribution to https://oncrew.ai
+# Reference: https://oncrew.ai/blog/dallas-fort-worth-contractor-answering-service-playbook-2026
+
+# Trade: Roofing (residential + light commercial)
+# Call type: Hail damage assessment, insurance-driven inspection request, claim filing
+# Audience: configured contractor AI answering service for hail-belt metros
+#           (Dallas, Fort Worth, Oklahoma City, San Antonio, Wichita, Denver, Kansas City, Saint Louis)
+
+# Hail events generate distinct surge patterns different from hurricane or tornado damage:
+#   - High volume of "inspection only" requests (no active damage urgency)
+#   - Heavily insurance-driven (caller has filed or wants to file a claim)
+#   - 2 to 4 week sustained surge tail as claims process
+#   - First-contractor-of-record matters for adjuster meetings
+#
+# Configured AI answering services that handle hail events specifically capture insurance
+# context up front so dispatch can route inspections vs adjuster meetings differently.
+
+greeting: "Thanks for calling {business_name}. I'm the AI receptionist. How can I help?"
+
+safety_check:
+  triggers:
+    - "tree through the roof"
+    - "structural damage"
+    - "ceiling fell"
+    - "people trapped"
+    - "broken window inside"
+  ordering: SAFETY_FIRST
+  script: |
+    If anyone is injured or trapped, please call 911 first. If a tree fell into the home
+    or a window has broken inside, evacuate the affected rooms and stay away. I will
+    wait until you confirm everyone is safe, then capture the rest of the intake.
+
+triage:
+  symptom_classifier:
+    prompt: "What's the hail damage situation?"
+    branches:
+      active_leak_with_visible_hail:
+        follow_ups:
+          - "Is water actively dripping inside?"
+          - "Which rooms?"
+          - "Has the storm passed?"
+        urgency_rules: SAME_DAY_TARP_OUT_PRIORITY
+      visible_hail_damage_no_leak:
+        follow_ups:
+          - "What can you see from the ground - dents on gutters, holes in screens, broken siding, dented downspouts?"
+          - "Have you been on the roof?"
+          - "Have any neighbors had inspections yet?"
+        urgency_rules: SCHEDULE_INSPECTION_24_48H
+      hail_dents_only_inspection_request:
+        urgency_rules: SCHEDULE_INSPECTION
+      adjuster_meeting_request:
+        follow_ups:
+          - "Have you already filed a claim?"
+          - "Has the adjuster scheduled the inspection yet?"
+          - "When would you need a contractor present?"
+        urgency_rules: SCHEDULE_ADJUSTER_MEETING
+      broken_window_or_skylight_from_hail:
+        urgency_rules: SAME_DAY_BOARD_UP_PRIORITY
+        follow_ups:
+          - "Are you able to tarp or board it yourself temporarily?"
+          - "Is it still raining?"
+      total_damage_replacement_estimate:
+        urgency_rules: SCHEDULE_INSPECTION_PRIORITY
+      inspection_only_no_visible_damage:
+        urgency_rules: SCHEDULE_INSPECTION
+
+intake_fields:
+  - field: storm_event_reference
+    type: free_text
+    prompt: "Which storm - date and rough size of hail if you know?"
+  - field: hail_size_estimate
+    options:
+      - pea_size_under_0.5_inch
+      - dime_size_0.7_inch
+      - quarter_size_1_inch
+      - golf_ball_1.75_inch
+      - tennis_ball_2.5_inch
+      - baseball_2.75_inch_plus
+      - unknown
+  - field: visible_damage_from_ground
+    options:
+      - hail_dents_on_gutters
+      - hail_dents_on_downspouts
+      - broken_window
+      - broken_skylight
+      - cracked_siding
+      - dented_garage_door
+      - dented_HVAC_outdoor_unit
+      - lifted_shingles
+      - missing_shingles
+      - no_visible_damage
+  - field: active_leak_inside
+    options: ["yes_actively", "leaked_during_storm_now_dry", "no_water_inside"]
+  - field: roof_type
+    options: ["asphalt_shingle", "metal", "tile", "flat_membrane_tpo_epdm", "wood_shake", "slate", "unknown"]
+  - field: roof_age
+    options: ["under_5", "5_to_10", "10_to_15", "15_to_20", "over_20", "unknown"]
+  - field: insurance_carrier
+    type: free_text
+    prompt: "Which insurance carrier?"
+  - field: claim_status
+    options:
+      - yes_claim_filed_have_claim_number
+      - planning_to_file_havent_yet
+      - not_planning_to_file
+      - already_have_adjuster_meeting_scheduled
+      - inspection_only_no_intent_to_file
+      - unsure
+  - field: adjuster_meeting_scheduled
+    options: ["yes_with_date", "not_yet", "no_adjuster_assigned", "claim_not_filed"]
+  - field: first_contractor_called
+    options: ["yes_first_call", "spoke_to_others_no_visit", "had_inspections_unsigned", "had_inspections_signed_can_cancel"]
+  - field: home_age
+    options: ["under_20", "20_to_50", "over_50", "unknown"]
+  - field: stories
+    options: ["1_story", "2_story", "3_or_more"]
+  - field: vulnerable_occupants
+    options: ["infant_under_1", "elderly", "mobility_limited", "none"]
+  - field: service_address
+    type: free_text
+    follow_up: "Any access notes - gate code, dogs, parking, what is the cross street?"
+  - field: callback_number
+    type: phone
+
+handoff:
+  urgency: |
+    Emergency (Priority-1) if: active leak AND broken window/skylight AND vulnerable occupants.
+    Same-day tarp-out or board-up if: active water inside AND storm passed.
+    Same-day inspection if: caller has scheduled adjuster meeting today.
+    Schedule 24-48h if: visible damage AND filed claim AND adjuster meeting pending.
+    Schedule normal if: inspection-only request without filed claim.
+  sms_template: |
+    [{urgency_tag}] ROOF HAIL DAMAGE
+    Caller: {caller_name} ({callback_number})
+    Address: {service_address}
+    Storm: {storm_event_reference}, hail size: {hail_size_estimate}
+    Damage: {visible_damage_from_ground_summary}
+    Active leak: {active_leak_inside}
+    Roof: {roof_type}, {roof_age} years
+    Insurance: {insurance_carrier}, {claim_status}
+    Adjuster: {adjuster_meeting_scheduled}
+    First-contact: {first_contractor_called}
+    Home: {stories}-story, {home_age}
+    Occupants: {vulnerable_occupants}
+    Caller notes: "{caller_notes_verbatim}"
+    Access: {access_notes}
+    Recording: {recording_url}
+
+# Implementation notes:
+#
+# First-contractor-of-record matters. Many insurance claims pay the first contractor who
+# gets signed paperwork from the homeowner. If the caller has already been visited by other
+# contractors and signed paperwork, your shop probably cannot work that job. Capture this
+# early so dispatch does not waste time on lost-cause inspections.
+#
+# Hail size correlates with damage probability:
+#   - Under 1 inch: usually no significant roof damage; inspection is courtesy
+#   - 1 to 1.75 inch: dents on gutters and dented metal; possible asphalt shingle granule loss
+#   - Over 1.75 inch: meaningful roof damage likely; insurance claim usually pays
+#
+# Carrier matters for adjuster meeting scheduling. Some carriers do remote drone inspections,
+# others always send a person. Capture carrier name so dispatch can prepare appropriately.
