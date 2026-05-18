@@ -1,0 +1,118 @@
+# Electrical Panel Failure Intake Script Template
+# License: CC BY 4.0 - free to share with attribution to https://oncrew.ai
+# Reference: https://oncrew.ai/blog/how-to-choose-answering-service-electrician
+
+# Trade: Electrical (residential)
+# Call type: Panel failure, partial power loss, arc fault, burning smell at panel
+# Audience: configured contractor AI answering service or live receptionist running an electrical script
+
+# Electrical calls have a stricter safety-first ordering than HVAC because arc fault and
+# burning smell can mean an active fire risk. The intake must capture safety state BEFORE
+# any commercial follow-up.
+
+greeting: "Thanks for calling {business_name}. I'm the AI receptionist. How can I help?"
+
+safety_check:
+  triggers:
+    - "burning smell at the panel"
+    - "burning smell in the wall"
+    - "smoke from outlet"
+    - "smoke from panel"
+    - "sparking outlet"
+    - "sparking switch"
+    - "shocked by outlet"
+    - "feels hot to touch"
+    - "buzzing panel"
+    - "scorched outlet"
+  ordering: SAFETY_FIRST
+  script: |
+    For your safety: please leave the home immediately and call 911 to report a possible
+    electrical fire. If you can safely access the main breaker without entering the
+    affected area, shut off the main breaker. I will wait until you confirm you are
+    out of the home, then capture the rest of the intake from outside.
+
+triage:
+  symptom_classifier:
+    prompt: "What is happening?"
+    branches:
+      total_power_loss:
+        follow_ups:
+          - "Is the power out on the whole house, or just part of it?"
+          - "Have you checked with the neighbor or the utility company about an outage?"
+          - "Anyone on medical equipment in the home that requires power (oxygen, dialysis, CPAP)?"
+        urgency_rules:
+          medical_equipment_present: PRIORITY_1
+      partial_power_loss:
+        follow_ups:
+          - "Which circuits are out (kitchen, bedrooms, garage, outdoor)?"
+          - "Did you reset the breakers? Did any of them stay reset, or do they trip again?"
+          - "Any GFCI outlets you can reset and check?"
+      tripped_breaker:
+        follow_ups:
+          - "Which breaker tripped, and what was running on that circuit?"
+          - "Does the breaker reset, or does it trip immediately?"
+      arc_fault_or_breaker_buzzing:
+        ordering: SAFETY_FIRST
+        script: "Please shut off the main breaker and leave the room. I will wait."
+      burning_smell:
+        ordering: SAFETY_FIRST
+        script: "Please leave the home and call 911. I will wait."
+      flickering_lights:
+        follow_ups:
+          - "All over the house, or just one room?"
+          - "Started recently, or has it been a while?"
+
+intake_fields:
+  - field: home_age
+    options: ["under_20_years", "20_to_50_years", "50_to_100_years", "over_100_years", "unknown"]
+  - field: panel_type
+    options:
+      - federal_pacific_stab_lok       # known recall + fire-risk concern
+      - zinsco                          # known recall + fire-risk concern
+      - square_d
+      - siemens
+      - cutler_hammer_eaton
+      - ge
+      - unknown
+  - field: panel_amperage
+    options: ["60", "100", "150", "200", "400", "unknown"]
+  - field: medical_equipment_in_home
+    options: ["oxygen", "dialysis", "cpap", "powered_wheelchair", "none"]
+  - field: vulnerable_occupants
+    options:
+      - infant_under_1
+      - child_under_5
+      - adult_over_70
+      - none
+  - field: service_address
+    type: free_text
+    follow_up: "Any access notes — gate code, side gate, dog on property?"
+  - field: callback_number
+    type: phone
+  - field: callback_window
+    options: ["morning", "afternoon", "evening", "weekend"]
+
+handoff:
+  urgency: |
+    Priority-1 if: any safety_check triggered, OR medical_equipment_in_home != none with total power loss,
+                   OR panel_type in [federal_pacific_stab_lok, zinsco] with active arc_fault/burning trigger.
+    Same-day if: total_power_loss with no medical, or repeated breaker trip.
+    Standard scheduling otherwise.
+  sms_template: |
+    [{urgency_tag}] ELECTRICAL FAILURE
+    Caller: {caller_name} ({callback_number})
+    Address: {service_address}
+    Problem: "{problem_verbatim}"
+    Home age: {home_age}, panel: {panel_type} {panel_amperage}A
+    Medical equipment: {medical_equipment_in_home}
+    Occupants: {vulnerable_occupants_summary}
+    Safety state: {safety_state}
+    Access: {access_notes}
+    Recording: {recording_url}
+
+# Notes for implementers:
+#   - Federal Pacific Stab-Lok and Zinsco panels are widely documented as fire-risk by
+#     CPSC and have specific elevated triage. Capture the panel type early in the intake.
+#   - For "burning smell" + active power, never tell the caller to investigate. Always
+#     evacuate and 911 first.
+#   - Medical equipment + total power loss is a same-day priority regardless of weather.
