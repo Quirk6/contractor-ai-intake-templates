@@ -1,0 +1,113 @@
+# Phoenix HVAC Summer Surge Intake Template
+# License: CC BY 4.0 - free to share with attribution to https://oncrew.ai
+# Reference: https://oncrew.ai/blog/phoenix-hvac-answering-service-summer-surge-playbook-2026
+
+# Trade: HVAC
+# Region: Phoenix metro (Maricopa County)
+# Call type: AC failure during summer surge (June 15 through September 30)
+# Audience: configured contractor AI answering service or live receptionist running an HVAC script
+
+# The Phoenix summer surge has structurally different triage than other US metros because:
+#   1. Daytime highs of 110 to 118 degrees turn AC failure into a public-health risk
+#   2. High concentration of vulnerable occupants (elderly, seasonal residents, medical-equipment users)
+#   3. Single 115-degree days generate 3 to 5x normal call volume across the metro
+#
+# This template captures the 3-tier triage logic and the Phoenix-specific intake fields
+# that determine SMS handoff content.
+
+greeting: "Thanks for calling {business_name}. I'm the AI receptionist. How can I help?"
+
+safety_check:
+  triggers: ["heat stroke", "passing out", "medical emergency", "elderly not responsive"]
+  ordering: SAFETY_FIRST
+  script: |
+    If anyone in the home is showing signs of heat distress (confusion, no sweating,
+    rapid pulse, fainting), please call 911 first. I will wait on the line, then
+    capture the rest of the intake.
+
+triage:
+  tier_classifier:
+    prompt: "What's the indoor temperature right now, and is anyone medically vulnerable in the home?"
+    output_fields: ["indoor_temp_f", "vulnerable_occupant_present"]
+    rules:
+      tier_1_public_health_priority:
+        match: "indoor_temp_f >= 95 OR (vulnerable_occupant_present AND ac_running == false)"
+        action: priority_1_sms
+        caller_advice: |
+          The crew will get a Priority-1 SMS now. While you wait, relocate to a
+          cooler space if possible (mall, library, family member's home). If indoor
+          temp rises above 100 with a vulnerable occupant, call 911 if anyone shows
+          heat distress symptoms.
+      tier_2_same_day_or_next_morning:
+        match: "ac_running == false AND indoor_temp_f < 95 AND vulnerable_occupant_present == false"
+        action: same_day_or_next_morning_schedule
+      tier_3_scheduling_queue:
+        match: "ac_running == true (partial cooling) OR maintenance_question"
+        action: standard_schedule
+
+intake_fields:
+  - field: indoor_current_temp_f
+    type: integer
+    prompt: "What does the thermostat read right now?"
+  - field: outdoor_current_temp_f
+    type: integer
+    auto_fill_from: weather_api(service_zip)
+  - field: vulnerable_occupants
+    options:
+      - infant_under_1
+      - child_under_5
+      - adult_over_70
+      - oxygen_or_dialysis_equipment
+      - none
+  - field: unit_type
+    options:
+      - split_system_refrigerated
+      - package_unit_refrigerated
+      - mini_split
+      - swamp_cooler_evaporative   # Phoenix-specific: many older homes
+      - unknown
+  - field: unit_age
+    options: ["under_5", "5_to_10", "10_to_15", "over_15", "unknown"]
+  - field: last_service_date
+    options: ["under_12_months", "1_to_3_years", "over_3_years", "never", "unknown"]
+  - field: symptom
+    options:
+      - no_cooling_at_all
+      - weak_cooling_running_hot
+      - water_leak_indoor
+      - ice_on_outdoor_coil
+      - unit_will_not_power_on
+      - breaker_tripped
+  - field: service_address
+    type: free_text
+    follow_up: "Any access notes — gate code, side gate latch, dog on property, parking?"
+  - field: callback_number
+    type: phone
+
+handoff:
+  urgency: |
+    Priority-1 if tier_1_public_health_priority matched.
+    Same-day if tier_2 matched.
+    Standard scheduling if tier_3 matched.
+  sms_template: |
+    [{urgency_tag}] PHOENIX AC FAILURE
+    Caller: {caller_name} ({callback_number})
+    Address: {service_address}
+    Indoor temp: {indoor_current_temp_f}°F (reading {trend})
+    Outdoor temp: {outdoor_current_temp_f}°F
+    Vulnerable occupants: {vulnerable_occupants_summary}
+    Unit: {unit_type}, {unit_age}, last service {last_service_date}
+    Symptom: {symptom}
+    Access: {access_notes}
+    Caller plan: {caller_plan_verbatim}
+    Recording: {recording_url}
+
+# Surge concurrency expectations:
+#   - 4-truck Phoenix HVAC shop: 35 calls/day normal, 100 to 150 calls on a 115-degree day
+#   - Answering service must field unlimited concurrent calls without queue
+#   - On-call tech SMS handoff inside 90 seconds is the bar
+#
+# Pricing structure expectations:
+#   - Per-call flat pricing is preferred over per-minute on Phoenix summer
+#   - Long emergency calls (8 to 12 minutes) blow up per-minute invoices
+#   - A 1,000-call surge month on $1.20/min is ~$7,200; on flat per-call is ~$549
