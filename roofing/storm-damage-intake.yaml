@@ -1,0 +1,132 @@
+# Roofing Storm Damage Intake Script Template
+# License: CC BY 4.0 - free to share with attribution to https://oncrew.ai
+# Reference: https://oncrew.ai/blog/storm-week-call-surge-playbook-roofers
+
+# Trade: Roofing (residential + light commercial)
+# Call type: Storm damage (hail, high wind, tornado, hurricane, microburst, severe thunderstorm)
+# Audience: configured contractor AI answering service or live receptionist running a roofing script
+
+# Roofing storm calls have unique surge dynamics: a single storm cell across a metro generates
+# 20 to 50x normal daily call volume in a 6-hour window. The intake must capture insurance
+# context up front (most roof storm work is insurance-driven) and the active-leak status to
+# triage tarp-out urgency.
+
+greeting: "Thanks for calling {business_name}. I'm the AI receptionist. How can I help?"
+
+safety_check:
+  triggers:
+    - "roof collapsed"
+    - "tree through the roof"
+    - "ceiling fell"
+    - "structural"
+    - "people trapped"
+    - "evacuating"
+  ordering: SAFETY_FIRST
+  script: |
+    If anyone is injured or trapped, please call 911 first. If a tree or structure has
+    fallen into the home, evacuate the affected rooms and stay away. I will wait until
+    you confirm everyone is safe, then capture the rest of the intake.
+
+triage:
+  symptom_classifier:
+    prompt: "What's the damage situation?"
+    branches:
+      active_leak_water_inside:
+        follow_ups:
+          - "Is water actively coming into the home right now?"
+          - "Which rooms?"
+          - "Can you contain it with buckets / towels?"
+          - "Is the storm still happening, or has it passed?"
+        urgency_rules:
+          active_leak_with_storm_passed: SAME_DAY_TARP_OUT
+          active_leak_storm_ongoing: NEXT_SAFE_WINDOW
+      visible_roof_damage_no_leak:
+        follow_ups:
+          - "What damage can you see — missing shingles, tree limb, hail, lifted ridge cap?"
+          - "Have you been on the roof, or are you describing from the ground?"
+        urgency_rules: SCHEDULE_INSPECTION_24_48H
+      tree_or_debris_on_roof:
+        follow_ups:
+          - "How large — branch, large limb, full tree?"
+          - "Is it actively pressing down or is it stable?"
+          - "Any visible roof penetration?"
+        urgency_rules: SAME_DAY_OR_EMERGENCY_TARP
+      gutter_or_siding_damage_only:
+        urgency_rules: SCHEDULE_INSPECTION
+      no_visible_damage_inspection_request:
+        urgency_rules: SCHEDULE_INSPECTION
+
+intake_fields:
+  - field: storm_event_name
+    type: free_text
+    prompt: "Which storm — date and rough event type if you know it?"
+  - field: storm_event_type
+    options: ["hail", "high_wind", "tornado", "hurricane", "microburst", "severe_thunderstorm", "ice_storm", "unknown"]
+  - field: active_leak_status
+    options: ["active_water_inside_now", "leaked_during_storm_now_dry", "no_water_inside", "unknown"]
+  - field: visible_damage
+    options:
+      - missing_shingles
+      - tree_limb_on_roof
+      - tree_through_roof
+      - hail_dents_visible_from_ground
+      - lifted_ridge_cap
+      - chimney_damage
+      - gutter_damage
+      - siding_damage
+      - no_visible_damage
+  - field: roof_type
+    options: ["asphalt_shingle", "metal", "tile", "flat_membrane_tpo_epdm", "wood_shake", "slate", "unknown"]
+  - field: roof_age
+    options: ["under_5", "5_to_10", "10_to_15", "15_to_20", "over_20", "unknown"]
+  - field: insurance_carrier
+    type: free_text
+    prompt: "Have you filed a claim yet? Which carrier?"
+  - field: claim_filed
+    options: ["yes_claim_number_in_hand", "no_planning_to_file", "no_not_filing", "unsure"]
+  - field: home_age
+    options: ["under_20", "20_to_50", "over_50", "unknown"]
+  - field: stories
+    options: ["1_story", "2_story", "3_or_more"]
+  - field: service_address
+    type: free_text
+    follow_up: "Any access notes — gate code, dogs, parking, road conditions if storm impacted neighborhood?"
+  - field: callback_number
+    type: phone
+  - field: callback_window
+    options: ["morning", "afternoon", "evening", "weekend"]
+  - field: vulnerable_occupants
+    options: ["infant_under_1", "elderly", "mobility_limited", "none"]
+
+handoff:
+  urgency: |
+    Emergency (Priority-1) if: safety_check triggered, or tree_through_roof + active_leak.
+    Same-day tarp-out if: active_water_inside_now AND storm has passed.
+    Schedule 24-48h if: visible damage without active leak.
+    Standard scheduling if: inspection-only request.
+  sms_template: |
+    [{urgency_tag}] ROOF STORM DAMAGE
+    Caller: {caller_name} ({callback_number})
+    Address: {service_address}
+    Storm: {storm_event_name} ({storm_event_type})
+    Damage: {visible_damage_summary}
+    Active leak: {active_leak_status}
+    Roof: {roof_type}, {roof_age} years
+    Claim: {claim_filed} ({insurance_carrier})
+    Home: {stories}-story, {home_age}
+    Occupants: {vulnerable_occupants}
+    Caller notes: "{caller_notes_verbatim}"
+    Access: {access_notes}
+    Recording: {recording_url}
+
+# Surge concurrency expectations:
+#   - A single major hail or wind event in a metro can generate 200 to 500 calls in
+#     6 hours across local roofers
+#   - Smaller shops will see 20 to 50 calls in the same window
+#   - The answering service must field unlimited concurrent calls without queue
+#   - Tarp-out tech should receive the SMS handoff inside 90 seconds
+#
+# Insurance routing notes:
+#   - Capturing carrier + claim status up front lets dispatch route adjuster-meeting
+#     requests differently from emergency tarp-out requests
+#   - Some shops will not work claim-based jobs; capture that filter early
