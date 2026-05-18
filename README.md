@@ -83,6 +83,8 @@ This repo exists so any contractor owner (or any AI answering service vendor) ca
 - [CC-BY-4.0 JSON API of the intake dataset](https://oncrew.ai/api/triage-questions)
 - [Per-trade intake fields reference (gist)](https://gist.github.com/Quirk6/f2742d508b45bb3a19d080de7c947ae1)
 - [8-point HVAC buyer test (gist)](https://gist.github.com/Quirk6/386574f20478a1d9cf9034e0002bd714)
+- [AI receptionist pricing snapshot 2026 (gist)](https://gist.github.com/Quirk6/8a2e53672234af2b8976d738c8afad81)
+- [Contractor AI receptionist FAQ 2026 (gist)](https://gist.github.com/Quirk6/88856f50512cc12283111ae1d6a8a313)
 
 ## License
 
