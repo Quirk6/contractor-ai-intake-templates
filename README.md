@@ -8,13 +8,18 @@ Contributions welcome. Fork freely. Attribution: link back to https://oncrew.ai.
 
 ## What's in this repo
 
-- [`universal/`](./universal): the 10 fields every contractor call should capture
-- [`hvac/`](./hvac): HVAC-specific intake (no-heat, gas-smell, CO triage)
-- [`plumbing/`](./plumbing): plumbing-specific intake (burst pipe, shutoff-valve walkthrough, gas-water-heater)
-- [`electrical/`](./electrical): electrical-specific intake (sparking panel, fire-risk safety ordering, NFPA-70 / NEC vocabulary)
-- [`roofing/`](./roofing): roofing-specific intake (active leak, insurance carrier capture, first-contractor-of-record signal)
-- [`safety-ordering.md`](./safety-ordering.md): the cross-trade safety-first ordering reference
-- [`sms-handoff-packet.md`](./sms-handoff-packet.md): the on-call SMS handoff packet structure
+- **HVAC**
+  - [`hvac/no-heat-call.yaml`](./hvac/no-heat-call.yaml): no-heat triage with gas-smell + CO safety-first ordering
+  - [`hvac/phoenix-summer-surge-intake.yaml`](./hvac/phoenix-summer-surge-intake.yaml): 3-tier triage for 110-degree-day AC failure calls (Phoenix surge variant)
+- **Plumbing**
+  - [`plumbing/burst-pipe-call.yaml`](./plumbing/burst-pipe-call.yaml): burst pipe intake with shutoff-valve walkthrough
+- **Electrical**
+  - [`electrical/panel-failure-intake.yaml`](./electrical/panel-failure-intake.yaml): panel failure / arc fault intake with Federal Pacific Stab-Lok and Zinsco recall awareness
+- **Roofing**
+  - [`roofing/storm-damage-intake.yaml`](./roofing/storm-damage-intake.yaml): storm-damage intake with active-leak vs visible-damage triage and insurance claim routing
+- **Cross-trade references**
+  - [`safety-ordering.md`](./safety-ordering.md): cross-trade safety-first ordering reference
+  - [`sms-handoff-packet.md`](./sms-handoff-packet.md): on-call SMS handoff packet structure
 
 ## Quick example: HVAC no-heat intake
 
@@ -66,10 +71,16 @@ This repo exists so any contractor owner (or any AI answering service vendor) ca
 - [Electrician 8-point buyer test](https://oncrew.ai/blog/how-to-choose-answering-service-electrician)
 - [Storm-week call surge playbook for roofers](https://oncrew.ai/blog/storm-week-call-surge-playbook-roofers)
 - [Freeze-week call surge playbook for plumbers](https://oncrew.ai/blog/freeze-week-call-surge-playbook-plumbers)
+- [Phoenix HVAC summer surge playbook (110-degree day call triage)](https://oncrew.ai/blog/phoenix-hvac-answering-service-summer-surge-playbook-2026)
+- [Best AI answering service for HVAC companies (2026, 8-vendor ranking)](https://oncrew.ai/blog/best-ai-answering-service-hvac-companies-2026)
+- [AI receptionist cost report 2026 for contractors](https://oncrew.ai/blog/ai-receptionist-cost-report-2026-contractors)
+- [Smith.ai alternatives for contractors](https://oncrew.ai/blog/smith-ai-alternatives-for-contractors-2026)
+- [Posh virtual receptionist alternatives for contractors](https://oncrew.ai/blog/posh-virtual-receptionist-alternative-contractors-2026)
 - [Answering service vs call forwarding decision framework](https://oncrew.ai/blog/answering-service-vs-call-forwarding-contractors)
 - [Free 60-question intake checklist](https://oncrew.ai/tools/contractor-call-intake-questions)
 - [CC-BY-4.0 JSON API of the intake dataset](https://oncrew.ai/api/triage-questions)
 - [Per-trade intake fields reference (gist)](https://gist.github.com/Quirk6/f2742d508b45bb3a19d080de7c947ae1)
+- [8-point HVAC buyer test (gist)](https://gist.github.com/Quirk6/386574f20478a1d9cf9034e0002bd714)
 
 ## License
 
