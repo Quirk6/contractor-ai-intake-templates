@@ -1,0 +1,125 @@
+# Plumbing Water Heater Failure Intake Script Template
+# License: CC BY 4.0 - free to share with attribution to https://oncrew.ai
+# Reference: https://oncrew.ai/blog/best-answering-service-plumbers-2026
+
+# Trade: Plumbing (residential)
+# Call type: Water heater failure (no hot water, leak, gas-water-heater pilot, T&P valve discharge, suspected gas leak)
+# Audience: configured contractor AI answering service or live receptionist running a plumbing script
+
+# Water heater calls have specific safety triggers (gas smell at the heater, T&P relief valve
+# discharging, scalding from runaway temp) that require evacuate-first ordering. The intake
+# must capture fuel type early because gas water heaters have different triage than electric.
+
+greeting: "Thanks for calling {business_name}. I'm the AI receptionist. How can I help?"
+
+safety_check:
+  triggers:
+    - "smell gas"
+    - "gas smell"
+    - "rotten egg smell"
+    - "hissing"
+    - "active leak from valve at top"
+    - "water spraying"
+    - "T&P valve discharging"
+    - "scalding hot"
+    - "water tastes wrong"
+  ordering: SAFETY_FIRST
+  script: |
+    Please leave the area immediately. If you smell gas, call 911 and your gas utility
+    from outside the home. If the temperature/pressure relief valve is actively
+    discharging, that means dangerous pressure buildup. Shut off the cold water supply
+    if you can safely reach it. I will wait until you confirm you are safe, then capture
+    the rest of the intake.
+
+triage:
+  symptom_classifier:
+    prompt: "What is going on with the water heater?"
+    branches:
+      no_hot_water_electric:
+        follow_ups:
+          - "Did the breaker trip? Did you reset it? Did it trip again?"
+          - "Is the reset button on the heater itself popped?"
+          - "Is the water lukewarm or completely cold?"
+      no_hot_water_gas:
+        follow_ups:
+          - "Is the pilot light on, or out?"
+          - "Have you tried relighting per the label? Did it stay lit?"
+          - "Did you smell gas at any point?"
+        safety_branch: gas_smell_during_relight
+      tank_leaking_water_at_base:
+        follow_ups:
+          - "Is it dripping, or actively running?"
+          - "Have you shut off the cold water supply valve?"
+          - "Is the water hot or warm or cold?"
+        urgency_rules: SAME_DAY_OR_PRIORITY
+      tp_valve_dripping_or_discharging:
+        ordering: SAFETY_FIRST
+        script: |
+          That valve is a safety relief valve. If it's actively discharging, the tank
+          pressure or temperature is too high. Shut off the cold water supply to the
+          heater. If the heater is gas, shut off the gas supply at the heater itself.
+          Move away from the heater. I will stay on the line.
+      runaway_temp_scalding:
+        ordering: SAFETY_FIRST
+        script: |
+          The thermostat may be stuck. Don't use hot water until we send someone. If
+          children or elderly are in the home, warn them not to touch the hot tap.
+      anode_rod_or_taste_issue:
+        urgency_rules: SCHEDULE_NORMAL
+      installation_estimate:
+        urgency_rules: SCHEDULE_NORMAL
+
+intake_fields:
+  - field: fuel_type
+    options: ["electric", "natural_gas", "propane", "tankless_electric", "tankless_gas", "heat_pump", "solar", "unknown"]
+  - field: tank_size_gallons
+    options: ["30", "40", "50", "55", "65", "75", "80", "100", "tankless", "unknown"]
+  - field: heater_age
+    options: ["under_5", "5_to_10", "10_to_15", "over_15", "unknown"]
+  - field: location_in_home
+    options: ["garage", "basement", "attic", "utility_closet", "outdoor", "crawlspace", "other"]
+  - field: water_supply_shutoff_state
+    options: ["off_closed", "open_running", "unsure", "cannot_locate_valve"]
+  - field: gas_supply_shutoff_state
+    options: ["off_closed", "open_running", "not_applicable_electric", "unsure"]
+  - field: visible_leak
+    options: ["base_of_tank", "top_of_tank", "tp_valve", "supply_lines", "no_visible_leak"]
+  - field: vulnerable_occupants
+    options: ["infant_under_1", "elderly", "mobility_limited", "none"]
+  - field: medical_hot_water_dependency
+    options: ["dialysis_with_hot_water_need", "infant_bath", "elderly_bathing", "none"]
+  - field: service_address
+    type: free_text
+    follow_up: "Any access notes — gate code, side gate, dog on property, parking?"
+  - field: callback_number
+    type: phone
+  - field: callback_window
+    options: ["morning", "afternoon", "evening", "weekend"]
+
+handoff:
+  urgency: |
+    Priority-1 if: gas_smell triggered, T&P_valve_discharging triggered, runaway_temp triggered,
+                  OR active leak with vulnerable occupants present.
+    Same-day if: active leak at base of tank.
+    Schedule next-day if: no hot water with no leak and no medical dependency.
+    Standard schedule if: anode rod, taste issue, installation estimate.
+  sms_template: |
+    [{urgency_tag}] WATER HEATER FAILURE
+    Caller: {caller_name} ({callback_number})
+    Address: {service_address}
+    Symptom: {symptom_summary}
+    Fuel: {fuel_type}, {tank_size_gallons} gal, {heater_age}
+    Location: {location_in_home}
+    Shutoff state: water={water_supply_shutoff_state}, gas={gas_supply_shutoff_state}
+    Visible leak: {visible_leak}
+    Occupants: {vulnerable_occupants}, medical hot-water need: {medical_hot_water_dependency}
+    Caller notes: "{caller_notes_verbatim}"
+    Access: {access_notes}
+    Recording: {recording_url}
+
+# Notes for implementers:
+#   - Gas water heaters require different safety ordering than electric. Capture fuel
+#     type early so the script can branch.
+#   - T&P (temperature/pressure relief) valve discharge is always a Priority-1 event.
+#   - Tankless units have their own failure modes (error codes, filter clogs, vent issues);
+#     consider a tankless-specific extension if those are common in your service area.
