@@ -1,0 +1,69 @@
+# Plumbing Burst-Pipe Intake Script Template
+# License: CC BY 4.0 - free to share with attribution to https://oncrew.ai
+# Reference: https://oncrew.ai/blog/freeze-week-call-surge-playbook-plumbers
+
+# Trade: Plumbing
+# Call type: Active flooding / burst pipe / water emergency
+# Audience: configured contractor AI answering service or live receptionist
+
+greeting: "Thanks for calling {business_name}. I'm the AI receptionist. How can I help?"
+
+safety_check:
+  triggers: ["I smell gas", "water near outlets", "water spraying near electrical"]
+  ordering: SAFETY_FIRST
+  scripts:
+    gas_smell: |
+      Please leave the home immediately and call 911 or your gas utility from outside.
+    water_near_electrical: |
+      Please stay away from the water if you can see it pooling near electrical outlets.
+      Do not touch anything connected to electricity. I will stay on the line.
+
+triage:
+  symptom_check:
+    prompt: "What is going on?"
+    branches:
+      burst_pipe:
+        follow_ups:
+          - "Where is the water coming from? Ceiling, wall, floor, water heater?"
+          - "Is water spraying right now or pooling?"
+          - "Have you been able to find the main water shutoff valve?"
+          - "Where is the main shutoff? Basement, garage, exterior wall?"
+          - "I can walk you through closing it if you find it. The valve is usually within 6 feet of where the main water line enters the home."
+      sewer_backup:
+        follow_ups:
+          - "Where is the sewage backing up? Toilet, shower, basement drain?"
+          - "How long has it been happening?"
+          - "Is anyone medically vulnerable in the home?"
+      water_heater_failure:
+        follow_ups:
+          - "Gas water heater or electric?"
+          - "Is it leaking, no hot water, or making noise?"
+          - "Where is the water heater located in the home?"
+
+intake_fields:
+  - field: water_source
+    options: ["ceiling", "wall", "floor", "sink", "toilet", "water_heater", "exterior_main"]
+  - field: shutoff_state
+    options: ["open", "closed", "homeowner_cannot_locate"]
+  - field: pipe_material_if_known
+    options: ["copper", "pex", "galvanized", "cast_iron", "unknown"]
+  - field: water_heater_status
+    options: ["working", "partial", "off", "gas_water_heater_concern"]
+  - field: service_address
+    type: free_text
+    follow_up: "Any access notes — gate code, dog on property?"
+  - field: callback_number
+    type: phone
+
+handoff:
+  urgency: |
+    Priority-1 if: active spraying + shutoff_state=open, OR water_near_electrical, OR gas_smell
+    urgent-routine if: pooling + shutoff_state=closed
+  sms_template: |
+    [{urgency_tag}] {caller_name} - {callback_number}
+    {service_address}
+    Problem: "{problem_verbatim}"
+    Water source: {water_source}
+    Shutoff: {shutoff_state}
+    Safety state: {safety_state}
+    Recording: {recording_url}

@@ -1,0 +1,70 @@
+# HVAC No-Heat Intake Script Template
+# License: CC BY 4.0 - free to share with attribution to https://oncrew.ai
+# Reference: https://oncrew.ai/blog/how-to-choose-answering-service-hvac-company
+
+# Trade: HVAC
+# Call type: No-heat emergency
+# Audience: configured contractor AI answering service or live receptionist running a HVAC script
+
+greeting: "Thanks for calling {business_name}. I'm the AI receptionist. How can I help?"
+
+safety_check:
+  triggers: ["gas smell", "I smell gas", "carbon monoxide", "CO alarm", "smoke", "burning smell"]
+  ordering: SAFETY_FIRST
+  script: |
+    Please leave the home immediately and call 911 or your gas utility from outside.
+    I will stay on the line until you confirm you are at a safe location, then
+    capture the rest of the intake.
+
+triage:
+  symptom_check:
+    prompt: "What is going on?"
+    branches:
+      no_heat:
+        follow_ups:
+          - "Are you getting cold air, or no air at all?"
+          - "Is there an error code on the thermostat?"
+          - "Do you have a heat pump, gas furnace, boiler, or something else?"
+          - "How old is the heating equipment?"
+          - "Is anyone in the home medically vulnerable to the cold (kids under 5, elderly, medical equipment)?"
+      no_cool:
+        follow_ups:
+          - "Indoor unit running but blowing warm air, or completely off?"
+          - "Heat pump or central AC?"
+          - "Anyone medically vulnerable to the heat?"
+      gas_smell:
+        ordering: SAFETY_FIRST
+        script: "Please leave the home and call 911 first. I will wait."
+      carbon_monoxide:
+        ordering: SAFETY_FIRST
+        script: "Please leave the home and call 911 first. I will wait."
+
+intake_fields:
+  - field: heat_type
+    options: ["gas_furnace", "heat_pump", "boiler", "electric_resistance", "unknown"]
+  - field: equipment_age
+    options: ["under_5", "5_to_10", "10_to_15", "over_15", "unknown"]
+  - field: vulnerable_occupants
+    options: ["kids_under_5", "elderly", "pets", "medical_equipment", "none"]
+  - field: last_service_date
+    type: free_text
+  - field: service_address
+    type: free_text
+    follow_up: "Any access notes — gate code, side gate latch, dog on property?"
+  - field: callback_number
+    type: phone
+  - field: callback_window
+    options: ["morning", "afternoon", "evening", "weekend"]
+
+handoff:
+  urgency: |
+    Priority-1 if: gas_smell triggered, carbon_monoxide triggered, or no_heat + vulnerable_occupants
+    urgent-routine otherwise
+  sms_template: |
+    [{urgency_tag}] {caller_name} - {callback_number}
+    {service_address}
+    Problem: "{problem_verbatim}"
+    Heat type: {heat_type}, age: {equipment_age}
+    Occupants: {vulnerable_occupants}
+    Safety state: {safety_state}
+    Recording: {recording_url}
